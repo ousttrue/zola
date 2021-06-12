@@ -107,6 +107,9 @@ pub struct Config {
     /// The config for the Markdown rendering: syntax highlighting and everything
     pub markdown: markup::Markdown,
 
+    /// Orphan page as transparent
+    pub orphan_as_transparent: bool,
+
     /// All user params set in [extra] in the config
     pub extra: HashMap<String, Toml>,
 }
@@ -383,6 +386,7 @@ impl Default for Config {
             slugify: slugify::Slugify::default(),
             search: search::Search::default(),
             markdown: markup::Markdown::default(),
+            orphan_as_transparent: false,
             extra: HashMap::new(),
         }
     }

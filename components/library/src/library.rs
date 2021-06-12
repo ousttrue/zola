@@ -193,41 +193,42 @@ impl Library {
             } else {
                 "_index.md".to_string()
             };
-            let mut parent_section_path = page.file.parent.join(&parent_filename);
-            while let Some(section_key) = self.paths_to_sections.get(&parent_section_path) {
-                let parent_is_transparent;
-                // We need to get a reference to a section later so keep the scope of borrowing small
-                {
-                    let section = self.sections.get_mut(*section_key).unwrap();
-                    section.pages.push(key);
-                    parent_is_transparent = section.meta.transparent;
-                }
-                page.ancestors =
-                    ancestors.get(&parent_section_path).cloned().unwrap_or_else(Vec::new);
-                // Don't forget to push the actual parent
-                page.ancestors.push(*section_key);
 
-                // Find the page template if one of a parent has page_template set
-                // Stops after the first one found, keep in mind page.ancestors
-                // is [index, ..., parent] so we need to reverse it first
-                if page.meta.template.is_none() {
-                    for ancestor in page.ancestors.iter().rev() {
-                        let s = self.sections.get(*ancestor).unwrap();
-                        if s.meta.page_template.is_some() {
-                            page.meta.template = s.meta.page_template.clone();
-                            break;
+            // We've added `_index(.{LANG})?.md` so if we are here so we need to go up to root
+            for parent in page.file.parent.ancestors() {
+                let parent_section_path = parent.join(&parent_filename);
+
+                let mut parent_is_transparent = config.orphan_as_transparent;
+                if let Some(section_key) = self.paths_to_sections.get(&parent_section_path) {
+                    // We need to get a reference to a section later so keep the scope of borrowing small
+                    if let Some(section) = self.sections.get_mut(*section_key) {
+                        section.pages.push(key);
+                        parent_is_transparent = section.meta.transparent;
+                    }
+                    page.ancestors =
+                        ancestors.get(&parent_section_path).cloned().unwrap_or_else(Vec::new);
+                    // Don't forget to push the actual parent
+                    page.ancestors.push(*section_key);
+
+                    // Find the page template if one of a parent has page_template set
+                    // Stops after the first one found, keep in mind page.ancestors
+                    // is [index, ..., parent] so we need to reverse it first
+                    if page.meta.template.is_none() {
+                        for ancestor in page.ancestors.iter().rev() {
+                            let s = self.sections.get(*ancestor).unwrap();
+                            if s.meta.page_template.is_some() {
+                                page.meta.template = s.meta.page_template.clone();
+                                break;
+                            }
                         }
                     }
                 }
-
                 if !parent_is_transparent {
                     break;
                 }
 
-                // We've added `_index(.{LANG})?.md` so if we are here so we need to go up twice
-                match parent_section_path.clone().parent().unwrap().parent() {
-                    Some(parent) => parent_section_path = parent.join(&parent_filename),
-                    None => break,
+                if parent == root_path {
+                    break;
                 }
             }
 
